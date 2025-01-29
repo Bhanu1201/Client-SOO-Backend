@@ -70,6 +70,10 @@ app.get('/api/protected', (req, res) => {
     });
 });
 
+app.get('/api/test', (req, res) => {
+   return 'running the server';
+});
+
 // Logout endpoint (optional, for server-side token invalidation)
 app.post('/api/logout', (req, res) => {
     // In a real application, you might add the token to a blacklist here
