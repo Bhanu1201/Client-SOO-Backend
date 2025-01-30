@@ -1,99 +1,82 @@
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const jwt = require('jsonwebtoken');
-const dotenv = require('dotenv');
-const axios = require('axios');
+import React, { useState } from 'react';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
-dotenv.config();
+const Login: React.FC = () => {
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const navigate = useNavigate();
 
-const app = express();
-const PORT = process.env.PORT || 10000;
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+        const response = await axios.post('https://client-soo-backend.onrender.com/api/login', {
+            username,
+            password,
+        });
 
-// Middleware
-app.use(cors({ origin: "*", credentials: true }));
-app.use(cors({ origin: "https://client-sso-frontend.onrender.com", credentials: true }));
-app.use(bodyParser.json());
+        // Store token in local storage
+        localStorage.setItem('token', response.data.token);
 
-// Sisense SSO Configuration
-const SISENSE_BASE_URL = process.env.SISENSE_BASE_URL;
-const SISENSE_SHARED_SECRET = process.env.SISENSE_SHARED_SECRET;
-const SISENSE_EXPIRATION = 600; // 10 minutes expiration time in seconds
+        // Redirect to Home page immediately
+        navigate('/');
+    } catch (err) {
+        setError('Invalid credentials');
+    }
+};
 
-// Generate JWT for Sisense SSO
-const generateSisenseToken = (user) => {
-    return jwt.sign(
-        {
-            iat: Math.floor(Date.now() / 1000),
-            exp: Math.floor(Date.now() / 1000) + SISENSE_EXPIRATION,
-            username: user.username,
-            email: user.email,
-            firstName: user.firstName,
-            lastName: user.lastName,
-        },
-        SISENSE_SHARED_SECRET
+    return (
+        <div className="d-flex justify-content-center align-items-center vh-100 bg-light">
+            <div className="card shadow p-4" style={{ width: "350px" }}>
+                <div className="card-body">
+                    <h2 className="text-center mb-4">Login</h2>
+                    {error && <p className="text-danger text-center">{error}</p>}
+                    <form onSubmit={handleLogin}>
+                        {/* Username Field */}
+                        <div className="mb-3">
+                            <label className="form-label">Username</label>
+                            <input
+                                type="text"
+                                className="form-control"
+                                placeholder="Enter username"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                required
+                            />
+                        </div>
+
+                        {/* Password Field */}
+                        <div className="mb-3">
+                            <label className="form-label">Password</label>
+                            <input
+                                type="password"
+                                className="form-control"
+                                placeholder="Enter password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                            />
+                        </div>
+
+                        {/* Submit Button */}
+                        <div className="d-grid">
+                            <button type="submit" className="btn btn-primary">
+                                Login
+                            </button>
+                        </div>
+                    </form>
+
+                    {/* Additional Links */}
+                    <div className="text-center mt-3">
+                        <a href="#" className="text-decoration-none">
+                            Forgot Password?
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 };
 
-// Authenticate against Sisense API
-const authenticateSisenseUser = async (username, password) => {
-    try {
-        const response = await axios.post(`${SISENSE_BASE_URL}/api/v1/authentication/login`, {
-            username,
-            password
-        });
-        return response.data;
-    } catch (error) {
-        return null;
-    }
-};
-
-// Login endpoint
-app.post('/api/login', async (req, res) => {
-    const { username, password } = req.body;
-
-    const authResponse = await authenticateSisenseUser(username, password);
-    
-    if (authResponse && authResponse.access_token) {
-        const user = {
-            username: authResponse.user.username,
-            email: authResponse.user.email,
-            firstName: authResponse.user.firstName,
-            lastName: authResponse.user.lastName,
-        };
-        
-        // Generate JWT for SSO
-        const token = generateSisenseToken(user);
-        const sisenseSSOUrl = `${SISENSE_BASE_URL}/app/account/sso?jwt=${token}`;
-        
-        res.json({ token, sisenseSSOUrl });
-    } else {
-        res.status(401).json({ error: 'Invalid credentials or authentication failed' });
-    }
-});
-
-// Protected route example
-app.get('/api/protected', (req, res) => {
-    const token = req.headers.authorization?.split(' ')[1];
-
-    if (!token) {
-        return res.status(401).json({ error: 'No token provided' });
-    }
-
-    jwt.verify(token, SISENSE_SHARED_SECRET, (err, decoded) => {
-        if (err) {
-            return res.status(401).json({ error: 'Invalid token' });
-        }
-        res.json({ message: `Welcome, ${decoded.username}!`, user: decoded });
-    });
-});
-
-// Health Check Endpoint
-app.get('/api/health', (req, res) => {
-    res.json({ status: "Healthy", timestamp: new Date().toISOString() });
-});
-
-// Start the server
-app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
-});
+export default Login;
