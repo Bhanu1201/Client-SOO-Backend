@@ -48,7 +48,6 @@ app.get('/api/protected', (req, res) => {
             return res.status(401).json({ error: 'Invalid token' });
         }
         res.json({ message: `Welcome, ${decoded.username}!` });
-        window.location.href = "home.html"
     });
 });
 
@@ -56,7 +55,6 @@ app.get('/api/protected', (req, res) => {
 app.post('/api/logout', (req, res) => {
     // In a real application, you might add the token to a blacklist here
     res.json({ message: 'Logged out successfully' });
-    window.location.href = "login.html"
 });
 
 
