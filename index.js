@@ -1,67 +1,43 @@
-const express = require("express");
-const cors = require("cors");
-const bodyParser = require("body-parser");
-const jwt = require("jsonwebtoken");
-const dotenv = require("dotenv");
-const axios = require("axios");
+import express from "express";
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 10000;
+const PORT = 3000;
 
-app.use(cors());
-app.use(bodyParser.json());
+// Sisense configurations - Replace with actual values
+const SISENSE_SHARED_SECRET = process.env.SISENSE_SHARED_SECRET || "your_secret_key";
+const SISENSE_HOST = process.env.SISENSE_HOST || "https://your-sisense-domain.com";
+const DEFAULT_USER_EMAIL = process.env.DEFAULT_USER_EMAIL || "user@example.com";
 
-const SISENSE_URL = process.env.SISENSE_URL || "https://yourcompany.sisense.com";
-const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret";
-const RETURN_URL = process.env.RETURN_URL || `${SISENSE_URL}/dashboards`;
-const SISENSE_API_KEY = process.env.SISENSE_API_KEY || "your_sisense_api_key"; // Store API key securely
+// Route to generate the JWT token and redirect to Sisense
+app.get("/sisense-login", (req, res) => {
+  try {
+    const userEmail = req.query.email || DEFAULT_USER_EMAIL;
 
-// **Login Endpoint - Validate credentials with Sisense**
-app.post("/api/login", async (req, res) => {
-    const { username, password } = req.body;
+    // Generate JWT Payload
+    const payload = {
+      iat: Math.floor(Date.now() / 1000), // Issued at
+      exp: Math.floor(Date.now() / 1000) + 60 * 5, // Expiration (5 mins)
+      email: userEmail, // User email
+      username: userEmail.split("@")[0], // Username (derived)
+      groups: ["default"], // Assign user groups
+    };
 
-    try {
-        // Call Sisense authentication API
-        const response = await axios.post(`${SISENSE_URL}/api/v1/authentication/login`, {
-            username,
-            password,
-        });
+    // Generate the JWT
+    const token = jwt.sign(payload, SISENSE_SHARED_SECRET, { algorithm: "HS256" });
 
-        if (response.data && response.data.access_token) {
-            // Use access token to fetch user details
-            const userResponse = await axios.get(`${SISENSE_URL}/api/v1/users/me`, {
-                headers: { Authorization: `Bearer ${response.data.access_token}` },
-            });
-
-            const user = userResponse.data;
-
-            // Generate JWT for SSO
-            const token = jwt.sign(
-                {
-                    iat: Math.floor(Date.now() / 1000),
-                    exp: Math.floor(Date.now() / 1000) + 60 * 60, // 1 hour expiry
-                    sub: user.id, // Sisense User ID
-                    email: user.email,
-                    firstName: user.firstName,
-                    lastName: user.lastName,
-                    return_to: RETURN_URL,
-                },
-                JWT_SECRET,
-                { algorithm: "HS256" }
-            );
-
-            res.json({ redirectUrl: `${SISENSE_URL}/login/jwt?jwt=${token}` });
-        } else {
-            res.status(401).json({ error: "Invalid Sisense credentials" });
-        }
-    } catch (error) {
-        res.status(500).json({ error: "Sisense authentication failed", details: error.message });
-    }
+    // Redirect to Sisense with the JWT
+    const sisenseSSOUrl = `${SISENSE_HOST}/app/account/sso?jwt=${token}`;
+    res.redirect(sisenseSSOUrl);
+  } catch (error) {
+    console.error("Error generating JWT:", error);
+    res.status(500).send("Internal Server Error");
+  }
 });
 
-// Start the server
 app.listen(PORT, () => {
-    console.log(`SSO Server running on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
