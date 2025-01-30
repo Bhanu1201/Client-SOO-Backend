@@ -1,7 +1,9 @@
-import express from "express";
-import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
-import cors from "cors";
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const jwt = require('jsonwebtoken');
+const dotenv = require('dotenv');
+const axios = require('axios');
 
 dotenv.config();
 
@@ -9,41 +11,88 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 
 // Middleware
-app.use(cors());
-app.use(cors({ origin: "https://client-sso-frontend.onrender.com" }));
+app.use(cors({ origin: "https://client-sso-frontend.onrender.com", credentials: true }));
 app.use(bodyParser.json());
 
-// Sisense configurations - Replace with actual values
-const SISENSE_SHARED_SECRET = process.env.SISENSE_SHARED_SECRET || "your_secret_key";
-const SISENSE_HOST = process.env.SISENSE_HOST || "https://your-sisense-domain.com";
-const DEFAULT_USER_EMAIL = process.env.DEFAULT_USER_EMAIL || "user@example.com";
+// Sisense SSO Configuration
+const SISENSE_BASE_URL = process.env.SISENSE_BASE_URL;
+const SISENSE_SHARED_SECRET = process.env.SISENSE_SHARED_SECRET;
+const SISENSE_EXPIRATION = 600; // 10 minutes expiration time in seconds
 
-// Route to generate the JWT token and redirect to Sisense
-app.get("/sisense-login", (req, res) => {
-  try {
-    const userEmail = req.query.email || DEFAULT_USER_EMAIL;
+// Generate JWT for Sisense SSO
+const generateSisenseToken = (user) => {
+    return jwt.sign(
+        {
+            iat: Math.floor(Date.now() / 1000),
+            exp: Math.floor(Date.now() / 1000) + SISENSE_EXPIRATION,
+            username: user.username,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+        },
+        SISENSE_SHARED_SECRET
+    );
+};
 
-    // Generate JWT Payload
-    const payload = {
-      iat: Math.floor(Date.now() / 1000), // Issued at
-      exp: Math.floor(Date.now() / 1000) + 60 * 5, // Expiration (5 mins)
-      email: userEmail, // User email
-      username: userEmail.split("@")[0], // Username (derived)
-      groups: ["default"], // Assign user groups
-    };
+// Authenticate against Sisense API
+const authenticateSisenseUser = async (username, password) => {
+    try {
+        const response = await axios.post(`${SISENSE_BASE_URL}/api/v1/authentication/login`, {
+            username,
+            password
+        });
+        return response.data;
+    } catch (error) {
+        return null;
+    }
+};
 
-    // Generate the JWT
-    const token = jwt.sign(payload, SISENSE_SHARED_SECRET, { algorithm: "HS256" });
+// Login endpoint
+app.post('/api/login', async (req, res) => {
+    const { username, password } = req.body;
 
-    // Redirect to Sisense with the JWT
-    const sisenseSSOUrl = `${SISENSE_HOST}/app/account/sso?jwt=${token}`;
-    res.redirect(sisenseSSOUrl);
-  } catch (error) {
-    console.error("Error generating JWT:", error);
-    res.status(500).send("Internal Server Error");
-  }
+    const authResponse = await authenticateSisenseUser(username, password);
+    
+    if (authResponse && authResponse.access_token) {
+        const user = {
+            username: authResponse.user.username,
+            email: authResponse.user.email,
+            firstName: authResponse.user.firstName,
+            lastName: authResponse.user.lastName,
+        };
+        
+        // Generate JWT for SSO
+        const token = generateSisenseToken(user);
+        const sisenseSSOUrl = `${SISENSE_BASE_URL}/app/account/sso?jwt=${token}`;
+        
+        res.json({ token, sisenseSSOUrl });
+    } else {
+        res.status(401).json({ error: 'Invalid credentials or authentication failed' });
+    }
 });
 
+// Protected route example
+app.get('/api/protected', (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ error: 'No token provided' });
+    }
+
+    jwt.verify(token, SISENSE_SHARED_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(401).json({ error: 'Invalid token' });
+        }
+        res.json({ message: `Welcome, ${decoded.username}!`, user: decoded });
+    });
+});
+
+// Health Check Endpoint
+app.get('/api/health', (req, res) => {
+    res.json({ status: "Healthy", timestamp: new Date().toISOString() });
+});
+
+// Start the server
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server is running on http://localhost:${PORT}`);
 });
