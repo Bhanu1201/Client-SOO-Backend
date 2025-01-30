@@ -59,6 +59,11 @@ app.post('/api/logout', (req, res) => {
     window.location.href = "login.html"
 });
 
+
+app.get('/api/test', (req, res) => {
+    return "test api is working"
+});
+
 // Start the server
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
