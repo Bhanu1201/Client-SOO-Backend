@@ -7,10 +7,11 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 
 // Middleware
 app.use(cors());
+app.use(cors({ origin: "https://frontend-service.onrender.com" }));
 app.use(bodyParser.json());
 
 // Dummy user for demonstration
@@ -19,35 +20,16 @@ const user = {
     password: 'password',
 };
 
-const users = [{
-    username: 'sai@dvk.ai',
-    password: 'password',
-},{
-    username: 'bhanu@dvk.ai',
-    password: 'password',
-}] ;
-const SISENSE_SSO_URL = process.env.SISENSE_SSO_URL; // Sisense SSO endpoint
-const SISENSE_JWT_SECRET = process.env.SISENSE_JWT_SECRET; 
 // Login endpoint
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
 
     if (username === user.username && password === user.password) {
-        const token = jwt.sign(
-            {
-                username: user.username,
-                email: user.username,
-                firstName: 'Admin', // Add user first name (optional)
-                lastName: 'User', // Add user last name (optional)
-                groups: ['Admin'], // Add user groups (optional)
-            },
-            SISENSE_JWT_SECRET, // Use the shared secret for signing
-            { expiresIn: '1h' }
-        );
-
-        // Redirect to Sisense SSO URL with the JWT token
-        const ssoRedirectUrl = `${SISENSE_SSO_URL}?jwt=${token}`;
-        res.json({ redirectUrl: ssoRedirectUrl });
+        // Generate JWT token
+        const token = jwt.sign({ username: user.username }, process.env.JWT_SECRET, {
+            expiresIn: '1h',
+        });
+        res.json({ token });
     } else {
         res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -68,10 +50,6 @@ app.get('/api/protected', (req, res) => {
         res.json({ message: `Welcome, ${decoded.username}!` });
         window.location.href = "home.html"
     });
-});
-
-app.get('/api/test', (req, res) => {
-   return 'running the server';
 });
 
 // Logout endpoint (optional, for server-side token invalidation)
