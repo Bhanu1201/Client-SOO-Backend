@@ -10,21 +10,23 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 
 // Middleware
-app.use(cors());
-app.use(cors({ origin: "https://client-sso-frontend.onrender.com" }));
+app.use(cors({ origin: "https://client-sso-frontend.onrender.com", credentials: true }));
 app.use(bodyParser.json());
 
-// Dummy user for demonstration
-const user = {
-    username: 'admin',
-    password: 'password',
-};
+// Users list
+const users = [
+    { username: 'admin', password: 'password1' },
+    { username: 'user1', password: 'password2' },
+    { username: 'user2', password: 'password3' }
+];
 
 // Login endpoint
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
+    
+    const user = users.find(u => u.username === username && u.password === password);
 
-    if (username === user.username && password === user.password) {
+    if (user) {
         // Generate JWT token
         const token = jwt.sign({ username: user.username }, process.env.JWT_SECRET, {
             expiresIn: '1h',
@@ -57,9 +59,9 @@ app.post('/api/logout', (req, res) => {
     res.json({ message: 'Logged out successfully' });
 });
 
-
+// Test API
 app.get('/api/test', (req, res) => {
-    return "test api is working"
+    res.json({ message: "Test API is working" });
 });
 
 // Start the server
