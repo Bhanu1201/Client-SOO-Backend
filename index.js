@@ -10,7 +10,8 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 
 // Middleware
-app.use(cors({ origin: "https://client-sso-frontend.onrender.com", credentials: true }));
+app.use(cors());
+app.use(cors({ origin: "https://client-sso-frontend.onrender.com" }));
 app.use(bodyParser.json());
 
 // Users list
