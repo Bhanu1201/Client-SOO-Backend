@@ -1,82 +1,68 @@
-import React, { useState } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const jwt = require('jsonwebtoken');
+const dotenv = require('dotenv');
 
-const Login: React.FC = () => {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const navigate = useNavigate();
+dotenv.config();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-        const response = await axios.post('https://client-soo-backend.onrender.com/api/login', {
-            username,
-            password,
+const app = express();
+const PORT = process.env.PORT || 10000;
+
+// Middleware
+app.use(cors());
+app.use(cors({ origin: "https://client-sso-frontend.onrender.com" }));
+app.use(bodyParser.json());
+
+// Dummy user for demonstration
+const user = {
+    username: 'admin',
+    password: 'password',
+};
+
+// Login endpoint
+app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+
+    if (username === user.username && password === user.password) {
+        // Generate JWT token
+        const token = jwt.sign({ username: user.username }, process.env.JWT_SECRET, {
+            expiresIn: '1h',
         });
-
-        // Store token in local storage
-        localStorage.setItem('token', response.data.token);
-
-        // Redirect to Home page immediately
-        navigate('/');
-    } catch (err) {
-        setError('Invalid credentials');
+        res.json({ token });
+    } else {
+        res.status(401).json({ error: 'Invalid credentials' });
     }
-};
+});
 
-    return (
-        <div className="d-flex justify-content-center align-items-center vh-100 bg-light">
-            <div className="card shadow p-4" style={{ width: "350px" }}>
-                <div className="card-body">
-                    <h2 className="text-center mb-4">Login</h2>
-                    {error && <p className="text-danger text-center">{error}</p>}
-                    <form onSubmit={handleLogin}>
-                        {/* Username Field */}
-                        <div className="mb-3">
-                            <label className="form-label">Username</label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                placeholder="Enter username"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                required
-                            />
-                        </div>
+// Protected route example
+app.get('/api/protected', (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
 
-                        {/* Password Field */}
-                        <div className="mb-3">
-                            <label className="form-label">Password</label>
-                            <input
-                                type="password"
-                                className="form-control"
-                                placeholder="Enter password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                            />
-                        </div>
+    if (!token) {
+        return res.status(401).json({ error: 'No token provided' });
+    }
 
-                        {/* Submit Button */}
-                        <div className="d-grid">
-                            <button type="submit" className="btn btn-primary">
-                                Login
-                            </button>
-                        </div>
-                    </form>
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(401).json({ error: 'Invalid token' });
+        }
+        res.json({ message: `Welcome, ${decoded.username}!` });
+    });
+});
 
-                    {/* Additional Links */}
-                    <div className="text-center mt-3">
-                        <a href="#" className="text-decoration-none">
-                            Forgot Password?
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
+// Logout endpoint (optional, for server-side token invalidation)
+app.post('/api/logout', (req, res) => {
+    // In a real application, you might add the token to a blacklist here
+    res.json({ message: 'Logged out successfully' });
+});
 
-export default Login;
+
+app.get('/api/test', (req, res) => {
+    return "test api is working"
+});
+
+// Start the server
+app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+});
