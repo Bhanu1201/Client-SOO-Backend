@@ -48,7 +48,6 @@ app.get('/api/protected', (req, res) => {
             return res.status(401).json({ error: 'Invalid token' });
         }
         res.json({ message: `Welcome, ${decoded.username}!` });
-        window.location.href = "home.html"
     });
 });
 
