@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 10000;
 
 // Middleware
 app.use(cors());
-app.use(cors({ origin: "https://frontend-service.onrender.com" }));
+app.use(cors({ origin: "https://client-sso-frontend.onrender.com" }));
 app.use(bodyParser.json());
 
 // Dummy user for demonstration
