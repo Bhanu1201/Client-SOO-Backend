@@ -53,6 +53,7 @@ app.get('/sisense/jwt', validateQueryParams, (req, res) => {
         }
 
         res.redirect(redirectUrl.toString());
+        console.log(res.redirect(redirectUrl.toString()));
 
     } catch (error) {
         console.error("Error generating JWT:", error.message);
