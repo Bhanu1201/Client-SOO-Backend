@@ -4,7 +4,13 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 
 const app = express();
-app.use(cors({ origin: "https://client-sso-frontend.onrender.com" }));
+app.use(cors({
+    origin: "https://client-sso-frontend.onrender.com",
+    credentials: true,
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+}));
+
 
 // Load environment variables
 const PORT = process.env.PORT || 10000;
@@ -52,8 +58,9 @@ app.get('/sisense/jwt', validateQueryParams, (req, res) => {
             redirectUrl.searchParams.append('return_to', return_to);
         }
 
+        console.log("Redirecting to:", redirectUrl.toString());
         res.redirect(redirectUrl.toString());
-        console.log(res.redirect(redirectUrl.toString()));
+
 
     } catch (error) {
         console.error("Error generating JWT:", error.message);
