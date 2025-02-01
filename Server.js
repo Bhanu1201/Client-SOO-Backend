@@ -1,8 +1,10 @@
 require('dotenv').config();
+const cors = require('cors');
 const express = require('express');
 const jwt = require('jsonwebtoken');
 
 const app = express();
+app.use(cors({ origin: "https://client-sso-frontend.onrender.com" }));
 
 // Load environment variables
 const PORT = process.env.PORT || 10000;
