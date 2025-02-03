@@ -95,7 +95,7 @@ app.get('/sisense/jwt', validateQueryParams, async (req, res) => {
         }
 
         // Ensure redirect URL is in format {returnUrl}/jwt?jwt=
-        const formattedRedirectUrl = `${SISENSE_BASE_URL}/api/v1/authentication/jwtLogin?jwt=${encodeURIComponent(token)}`;
+       const formattedRedirectUrl = `${SISENSE_BASE_URL}/${tenantId}/jwt?jwt=${encodeURIComponent(token)}`;
 
         console.log("Redirecting to:", formattedRedirectUrl);
         res.redirect(formattedRedirectUrl);
