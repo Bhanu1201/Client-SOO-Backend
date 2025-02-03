@@ -22,6 +22,7 @@ app.options("*", cors());
 // Load environment variables
 const PORT = process.env.PORT || 10000;
 const SISENSE_SHARED_SECRET = process.env.SISENSE_SHARED_SECRET;
+const SISENSE_BASE_URL = "https://atomicworks.sisensepoc.com";
 
 if (!SISENSE_SHARED_SECRET) {
     console.error("ERROR: SISENSE_SHARED_SECRET is not set!");
@@ -52,15 +53,18 @@ class SisenseJwtProvider {
             throw new Error("Email, tenant ID, and secret key are required to generate JWT.");
         }
 
-        const issuedAt = Math.floor(Date.now() / 1000); // Current time in seconds
+        const issuedAt = Math.floor(Date.now() / 1000);
+        const expiry = issuedAt + 3600; // Token expires in 1 hour
 
         const payload = {
-            sub: email,  // Sisense user email
-            iat: issuedAt,  // Issued at timestamp
-            exp: issuedAt + 3600, // Expiry time (1 hour)
-            jti: crypto.randomUUID(),  // Unique JWT ID
-            tid: tenantId,  // Tenant ID (for multi-tenancy support)
+            sub: email, // Sisense user email
+            iat: issuedAt, // Issued at timestamp
+            exp: expiry, // Expiry time
+            jti: crypto.randomUUID(), // Unique JWT ID
+            tid: tenantId, // Tenant ID
         };
+
+        console.log("JWT Payload:", payload); // Debugging log
 
         return jwt.sign(payload, secretKey, { algorithm: 'HS256' });
     }
@@ -69,14 +73,14 @@ class SisenseJwtProvider {
 // SSO API Endpoint
 app.get('/sisense/jwt', validateQueryParams, (req, res) => {
     try {
-        const { email, tenantId, return_to, returnUrl } = req.query;
+        const { email, tenantId, returnUrl } = req.query;
 
         console.log("Generating JWT for:", { email, tenantId });
 
         const token = SisenseJwtProvider.createJwt(email, tenantId, SISENSE_SHARED_SECRET);
 
-        // Ensure the redirect URL is correctly formatted as {returnUrl}/jwt?jwt=
-        const formattedRedirectUrl = `${returnUrl.replace(/\/$/, '')}/jwt?jwt=${token}`;
+        // Ensure redirect URL is in format {returnUrl}/jwt?jwt=
+        const formattedRedirectUrl = `${returnUrl.replace(/\/$/, '')}/jwt?jwt=${encodeURIComponent(token)}`;
 
         console.log("Redirecting to:", formattedRedirectUrl);
         res.redirect(formattedRedirectUrl);
