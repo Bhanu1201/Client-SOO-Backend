@@ -22,7 +22,7 @@ app.options("*", cors());
 // Load environment variables
 const PORT = process.env.PORT || 10000;
 const SISENSE_SHARED_SECRET = process.env.SISENSE_SHARED_SECRET;
-const SISENSE_BASE_URL = process.env.SISENSE_BASE_URL || "https://atomicworks.sisensepoc.com";
+const SISENSE_BASE_URL = process.env.SISENSE_BASE_URL || "https://atomicworks.sisensepoc.com/TenantTest";
 
 // Validate essential environment variables at startup
 if (!SISENSE_SHARED_SECRET) {
@@ -95,7 +95,7 @@ app.get('/sisense/jwt', validateQueryParams, async (req, res) => {
         }
 
         // Ensure redirect URL is in format {returnUrl}/jwt?jwt=
-       const formattedRedirectUrl = `${SISENSE_BASE_URL}/${tenantId}/jwt?jwt=${encodeURIComponent(token)}`;
+       const formattedRedirectUrl = `${SISENSE_BASE_URL}/jwt?jwt=${encodeURIComponent(token)}`;
 
         console.log("Redirecting to:", formattedRedirectUrl);
         res.redirect(formattedRedirectUrl);
