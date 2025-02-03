@@ -22,7 +22,7 @@ app.options("*", cors());
 // Load environment variables
 const PORT = process.env.PORT || 10000;
 const SISENSE_SHARED_SECRET = process.env.SISENSE_SHARED_SECRET;
-const SISENSE_BASE_URL = "https://atomicworks.sisensepoc.com";
+const SISENSE_BASE_URL = "https://atomicworks.sisensepoc.com/tenantsso";
 
 if (!SISENSE_SHARED_SECRET) {
     console.error("ERROR: SISENSE_SHARED_SECRET is not set!");
