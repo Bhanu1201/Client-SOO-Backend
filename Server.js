@@ -75,15 +75,11 @@ app.get('/sisense/jwt', validateQueryParams, (req, res) => {
 
         const token = SisenseJwtProvider.createJwt(email, tenantId, SISENSE_SHARED_SECRET);
 
-        let redirectUrl = new URL(returnUrl);
-        redirectUrl.searchParams.append('jwt', token);
+        // Ensure the redirect URL is correctly formatted as {returnUrl}/jwt?jwt=
+        const formattedRedirectUrl = `${returnUrl.replace(/\/$/, '')}/jwt?jwt=${token}`;
 
-        if (return_to) {
-            redirectUrl.searchParams.append('return_to', return_to);
-        }
-
-        console.log("Redirecting to:", redirectUrl.toString());
-        res.redirect(redirectUrl.toString());
+        console.log("Redirecting to:", formattedRedirectUrl);
+        res.redirect(formattedRedirectUrl);
 
     } catch (error) {
         console.error("Error generating JWT:", error.message);
