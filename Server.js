@@ -22,10 +22,11 @@ app.options("*", cors());
 // Load environment variables
 const PORT = process.env.PORT || 10000;
 const SISENSE_SHARED_SECRET = process.env.SISENSE_SHARED_SECRET;
-const SISENSE_BASE_URL = "https://atomicworks.sisensepoc.com/TenantTest";
+const SISENSE_BASE_URL = process.env.SISENSE_BASE_URL || "https://atomicworks.sisensepoc.com/TenantTest";
 
+// Validate essential environment variables at startup
 if (!SISENSE_SHARED_SECRET) {
-    console.error("ERROR: SISENSE_SHARED_SECRET is not set!");
+    console.error("ERROR: SISENSE_SHARED_SECRET is not set! Please check your .env file or environment settings.");
     process.exit(1);
 }
 
@@ -46,7 +47,7 @@ function validateQueryParams(req, res, next) {
     next();
 }
 
-// JWT Provider Class with Tenant Support
+// JWT Provider Class with Enhanced Error Handling
 class SisenseJwtProvider {
     static createJwt(email, tenantId, secretKey) {
         if (!email || !tenantId || !secretKey) {
@@ -64,20 +65,34 @@ class SisenseJwtProvider {
             tid: tenantId, // Tenant ID
         };
 
+        const header = {
+            alg: "HS256",
+            typ: "JWT"
+        };
+
         console.log("JWT Payload:", payload); // Debugging log
 
-        return jwt.sign(payload, secretKey, { algorithm: 'HS256' });
+        try {
+            return jwt.sign(payload, secretKey, { algorithm: 'HS256', header });
+        } catch (err) {
+            console.error("Error signing JWT:", err.message);
+            throw new Error("JWT signing failed");
+        }
     }
 }
 
-// SSO API Endpoint
-app.get('/sisense/jwt', validateQueryParams, (req, res) => {
+// SSO API Endpoint with Improved Error Handling
+app.get('/sisense/jwt', validateQueryParams, async (req, res) => {
     try {
         const { email, tenantId, returnUrl } = req.query;
 
         console.log("Generating JWT for:", { email, tenantId });
 
         const token = SisenseJwtProvider.createJwt(email, tenantId, SISENSE_SHARED_SECRET);
+
+        if (!token) {
+            throw new Error("JWT token generation failed.");
+        }
 
         // Ensure redirect URL is in format {returnUrl}/jwt?jwt=
         const formattedRedirectUrl = `${returnUrl.replace(/\/$/, '')}/jwt?jwt=${encodeURIComponent(token)}`;
@@ -86,8 +101,8 @@ app.get('/sisense/jwt', validateQueryParams, (req, res) => {
         res.redirect(formattedRedirectUrl);
 
     } catch (error) {
-        console.error("Error generating JWT:", error.message);
-        res.status(500).json({ error: "Internal Server Error" });
+        console.error("Error generating JWT:", error.stack);
+        res.status(500).json({ error: "Internal Server Error", message: error.message });
     }
 });
 
