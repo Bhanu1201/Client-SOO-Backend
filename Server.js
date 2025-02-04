@@ -32,10 +32,10 @@ if (!SISENSE_SHARED_SECRET) {
 
 // Middleware to validate query parameters
 function validateQueryParams(req, res, next) {
-    const { email, returnUrl, tenantId } = req.query;
+    const { email, returnUrl, tenantId, tenantName } = req.query;
 
-    if (!email || !returnUrl || !tenantId) {
-        return res.status(400).json({ error: "❌ Missing required parameters: email, tenantId, returnUrl" });
+    if (!email || !returnUrl || !tenantId || !tenantName) {
+        return res.status(400).json({ error: "❌ Missing required parameters: email, tenantId, tenantName, returnUrl" });
     }
 
     try {
@@ -62,7 +62,7 @@ class SisenseJwtProvider {
             iat: issuedAt, // Issued at timestamp
             exp: expiry, // Expiry time (shorter lifespan for security)
             jti: crypto.randomUUID(), // Unique JWT ID
-            tid: tenantId, // Tenant ID (required for multi-tenancy)
+            tid: tenantId, // ✅ Correctly passing tenant ID in JWT payload
         };
 
         const header = {
@@ -84,9 +84,9 @@ class SisenseJwtProvider {
 // SSO API Endpoint with Improved Error Handling
 app.get('/sisense/jwt', validateQueryParams, async (req, res) => {
     try {
-        const { email, tenantId, returnUrl } = req.query;
+        const { email, tenantId, tenantName, returnUrl } = req.query;
 
-        console.log("🔹 Generating JWT for:", { email, tenantId });
+        console.log("🔹 Generating JWT for:", { email, tenantId, tenantName });
 
         const token = SisenseJwtProvider.createJwt(email, tenantId, SISENSE_SHARED_SECRET);
 
@@ -94,8 +94,8 @@ app.get('/sisense/jwt', validateQueryParams, async (req, res) => {
             throw new Error("❌ JWT token generation failed.");
         }
 
-        // ✅ Corrected Redirect URL Format for Multi-Tenant
-        const formattedRedirectUrl = `${SISENSE_BASE_URL}/${tenantId}/jwt?jwt=${encodeURIComponent(token)}`;
+        // ✅ Use `tenantName` in the URL, but `tenantId` in the JWT payload
+        const formattedRedirectUrl = `${SISENSE_BASE_URL}/${tenantName}/jwt?jwt=${encodeURIComponent(token)}`;
 
         console.log("🔹 Redirecting to:", formattedRedirectUrl);
         res.redirect(formattedRedirectUrl);
