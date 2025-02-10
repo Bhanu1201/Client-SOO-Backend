@@ -95,7 +95,7 @@ app.get('/sisense/jwt', validateQueryParams, async (req, res) => {
         }
 
         // ✅ Use `tenantName` in the URL, but `tenantId` in the JWT payload
-        const formattedRedirectUrl = `${SISENSE_BASE_URL}/${tenantName}/jwt?jwt=${encodeURIComponent(token)}`;
+        const formattedRedirectUrl = `${SISENSE_BASE_URL}/${tenantName}/jwt?jwt=${encodeURIComponent(token)}&returnTo=${encodeURIComponent(returnUrl)}`;
 
         console.log("🔹 Redirecting to:", formattedRedirectUrl);
         res.redirect(formattedRedirectUrl);
